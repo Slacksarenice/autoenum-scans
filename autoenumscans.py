@@ -11,9 +11,10 @@ import concurrent.futures
 parser = argparse.ArgumentParser(description='Run automated info gathering scripts')
 parser.add_argument('hostname', help='Hostname/IP address for the machine')
 parser.add_argument('port', nargs='?', default='80', help='Port for the machine you want to run nikto and/or gobuster on')
+parser.add_argument('wordlist',help='wordlist location')
 parser.add_argument('--nmap', '-n', nargs='*', help='Runs nmap commands with arguments')
 parser.add_argument('--nikto', '-k', nargs='*', help='Runs nikto commands with arguments')
-parser.add_argument('--gobust', '-g', nargs='*', help='Run gobuster scan on target with arguments')
+parser.add_argument('--gobuster', '-g', nargs='*', help='Run gobuster scan on target with arguments')
 parser.add_argument('--output','-o', nargs='?', help='Output directory to write data to', required=True)
 args = parser.parse_args()
 datalist = []
@@ -30,6 +31,7 @@ def outputtype(outputform, listformatted, scriptname):
 
 
 def fixlist(arguments,scriptname):
+	fixedlist = []
 	fixedlist = ['-'+todo for todo in arguments]
 	fixedlist.insert(0,scriptname)
 
@@ -42,8 +44,12 @@ def fixlist(arguments,scriptname):
 		fixedlist.append(args.hostname)
 		return outputtype(args.output, fixedlist, scriptname)
 
-	elif scriptname == 'gobust':
-		fixedlist += ['-u', f'http://{args.hostname}:{args.port}/']
+	elif scriptname == 'gobuster':
+		fixedlist.insert(1, '-u')
+		fixedlist.insert(2, f'http://{args.hostname}:{args.port}/')
+		fixedlist.append('-w')
+		fixedlist.append(args.wordlist)		
+		return outputtype(args.output, fixedlist, scriptname)
 
 
 def directorypath(dirpath):
@@ -59,13 +65,12 @@ def directorypath(dirpath):
 def printoutputtofile(datalist):
 	x = 0
 	while x < len(datalist):
-		if debug == 0 or debug != None:
+		if  datalist[x].poll() != None:
 			datalist[x].communicate()[0]
 			datalist.pop(x)
 			x = 0
 			continue
-
-		if len(datalist) != 0 and x == len(datalist)-1:
+		elif x == len(datalist)-1:
 			x=0
 
 		else:
@@ -77,8 +82,8 @@ if args.nmap != None:
 if args.nikto != None:
 	datalist.append(fixlist(args.nikto, 'nikto'))
 
-if args.gobust != None:
-	datalist.append(fixlist(args.nikto, 'gobust'))
+if args.gobuster != None:
+	datalist.append(fixlist(args.gobuster, 'gobuster'))
 
 printoutputtofile(datalist)
 
